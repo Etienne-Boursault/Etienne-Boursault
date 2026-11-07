@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<!-- Source de la bannière du profil (img/banniere.png et img/banniere-sombre.png), dans le style du CV.
+     Modifier les textes ici, puis lancer : bash source/generer-banniere.sh -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter+Tight:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root { --paper:#f6f5f0; --ink:#1b1d21; --muted:#5d636b; --grid:rgba(27,29,33,.06); --ed:#15171c; --ed-ink:#d7dce4; --ed-muted:#8a93a3; --seam:#c2410c; --gel:#efd5c4; }
+@media (prefers-color-scheme: dark) { :root { --paper:#10263f; --ink:#dce8f6; --muted:#93abc6; --grid:rgba(220,232,246,.07); --ed:#0c0d10; --seam:#ffb36b; --gel:#3a3f47; } }
+html,body { margin:0; }
+.b { width:1200px; height:420px; position:relative; overflow:hidden; display:grid; grid-template-columns:1fr 1fr; }
+.g { background:var(--paper); background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px); background-size:24px 24px; border-right:1.5px solid var(--seam); }
+.d { background:var(--ed); }
+.txt { position:absolute; top:150px; display:grid; gap:6px; }
+.txt.l { right:calc(50% + 150px); text-align:right; }
+.txt.r { left:calc(50% + 150px); }
+.lab { font:500 15px/1 "IBM Plex Mono",monospace; letter-spacing:.22em; }
+.l .lab { color:var(--muted); } .r .lab { color:var(--ed-muted); }
+.eng { font:700 70px/1 "Inter Tight",sans-serif; letter-spacing:-.045em; color:var(--ink); margin-top:4px; }
+.dev { font:400 58px/1.05 "JetBrains Mono",monospace; letter-spacing:-.02em; color:var(--ed-ink); margin-top:4px; }
+.dev i { font-style:normal; color:#c678dd; }
+.sub { font:400 16px/1.2 "Inter Tight",sans-serif; color:var(--muted); }
+.r .sub { font:400 15px/1.2 "JetBrains Mono",monospace; color:var(--ed-muted); }
+svg { position:absolute; left:0; top:0; }
+</style></head>
+<body><div class="b">
+  <div class="g"></div><div class="d"></div>
+  <div class="txt l"><div class="lab">ETIENNE</div><div class="eng">engineer</div><div class="sub">Polymers and composites · 2011–2018</div></div>
+  <div class="txt r"><div class="lab">BOURSAULT</div><div class="dev"><i>&lt;</i>developer<i>&gt;</i></div><div class="sub">full stack · since 2019</div></div>
+  <svg id="s" width="1200" height="420" viewBox="0 0 1200 420"></svg>
+</div>
+<script>
+// Sept plis en vue éclatée, du bas (ISPA) au gelcoat ; moitié gauche à l'encre, moitié droite aux couleurs de l'éditeur.
+// Géométrie calculée à la main (demi-losanges et hachures découpées par Cyrus-Beck), sans clipPath.
+const s = document.getElementById("s"), NS = "http://www.w3.org/2000/svg";
+const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+const ink = dark ? "#dce8f6" : "#1b1d21", papier = dark ? "#10263f" : "#f6f5f0", ed = dark ? "#0c0d10" : "#15171c";
+const plis = [
+  { a: 0, c: "#e5c07b" }, { a: 90, c: "#e5c07b" }, { a: "prim", c: "#56b6c2" },
+  { a: 45, c: "#61afef" }, { a: -45, c: "#61afef" }, { a: 0, c: "#c678dd" }, { a: "gel", c: "#98c379" },
+];
+const cx = 600, W = 112, H = 46, base = 328, pas = 36;
+const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); s.appendChild(e); return e; };
+const pts = (P) => P.map(q => q.join(",")).join(" ");
+// Découpe le segment [A,B] par un polygone convexe P (sens quelconque).
+function decoupe(A, B, P) {
+  let t0 = 0, t1 = 1; const d = [B[0] - A[0], B[1] - A[1]];
+  const aire = P.reduce((m, p, i) => { const q = P[(i + 1) % P.length]; return m + p[0] * q[1] - q[0] * p[1]; }, 0), sg = Math.sign(aire);
+  for (let i = 0; i < P.length; i++) {
+    const p = P[i], q = P[(i + 1) % P.length];
+    const nx = -(q[1] - p[1]) * sg, ny = (q[0] - p[0]) * sg; // normale intérieure
+    const num = nx * (A[0] - p[0]) + ny * (A[1] - p[1]), den = nx * d[0] + ny * d[1];
+    if (Math.abs(den) < 1e-9) { if (num < 0) return null; continue; }
+    const t = -num / den;
+    if (den > 0) t0 = Math.max(t0, t); else t1 = Math.min(t1, t);
+    if (t0 > t1) return null;
+  }
+  return [[A[0] + d[0] * t0, A[1] + d[1] * t0], [A[0] + d[0] * t1, A[1] + d[1] * t1]];
+}
+plis.forEach((p, i) => {
+  const y = base - i * pas - (i >= 2 ? 6 : 0) - (i >= 3 ? 4 : 0);
+  const haut = [cx, y - H], droite = [cx + W, y], bas = [cx, y + H], gauche = [cx - W, y];
+  const moities = [
+    { P: [haut, bas, gauche], trait: ink, fond: p.a === "gel" ? (dark ? "#3a3f47" : "#efd5c4") : papier },
+    { P: [haut, droite, bas], trait: p.c, fond: ed },
+  ];
+  for (const m of moities) {
+    el("polygon", { points: pts(m.P), fill: m.fond });
+    if (p.a === "prim") {
+      for (let x = cx - W; x <= cx + W; x += 6) for (let yy = y - H; yy <= y + H; yy += 6) {
+        const r = decoupe([x, yy], [x + .01, yy], m.P); if (r) el("circle", { cx: x, cy: yy, r: .9, fill: m.trait, opacity: .8 });
+      }
+    } else if (p.a !== "gel") {
+      // 0° et 90° suivent les arêtes du losange, ±45° ses diagonales.
+      const dir = { 0: [W, H], 90: [W, -H], 45: [1, 0], [-45]: [0, 1] }[p.a];
+      const n = Math.hypot(...dir), dx = dir[0] / n, dy = dir[1] / n, ox = -dy, oy = dx;
+      for (let k = -200; k <= 200; k += 6.5) {
+        const px = cx + ox * k, py = y + oy * k;
+        const r = decoupe([px - dx * 300, py - dy * 300], [px + dx * 300, py + dy * 300], m.P);
+        if (r) el("line", { x1: r[0][0], y1: r[0][1], x2: r[1][0], y2: r[1][1], stroke: m.trait, "stroke-width": .9, opacity: .7 });
+      }
+    }
+    el("polygon", { points: pts(m.P), fill: "none", stroke: m.trait, "stroke-width": 1.2, "stroke-linejoin": "round" });
+  }
+  el("line", { x1: cx, y1: y - H, x2: cx, y2: y + H, stroke: dark ? "#ffb36b" : "#c2410c", "stroke-width": 1.2 });
+});
+</script>
+</body></html>
